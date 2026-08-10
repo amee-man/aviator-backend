@@ -38,6 +38,9 @@ function startGameLoop() {
     gameState.crashPoint = generateCrashPoint();
     io.emit('game_state', gameState);
 
+    console.log("---------------------------------");
+    console.log("Round Haaraa: Crash Point: " + gameState.crashPoint + "x");
+
     setTimeout(() => {
         gameState.status = 'RUNNING';
         runGame();
@@ -55,28 +58,10 @@ function runGame() {
             if (gameState.history.length > 10) gameState.history.pop();
 
             io.emit('game_crash', { crashPoint: gameState.crashPoint });
-            setTimeout(startGameLoop, 3000);
-        } else {
-            io.emit('multiplier_update', { multiplier: gameState.multiplier });
-        }
-    }, 100);
-}
-function runGame() {
-    const gameInterval = setInterval(() => {
-        gameState.multiplier = parseFloat((gameState.multiplier + 0.01).toFixed(2));
-
-        if (gameState.multiplier >= gameState.crashPoint) {
-            clearInterval(gameInterval);
-            gameState.status = 'CRASHED';
-            gameState.history.unshift(gameState.crashPoint);
-            if (gameState.history.length > 10) gameState.history.pop();
-
-            io.emit('game_crash', { crashPoint: gameState.crashPoint });
             console.log("CRASHED AT: " + gameState.crashPoint + "x");
             setTimeout(startGameLoop, 3000);
         } else {
             io.emit('multiplier_update', { multiplier: gameState.multiplier });
-            console.log("Multiplier: " + gameState.multiplier + "x");
         }
     }, 100);
 }
