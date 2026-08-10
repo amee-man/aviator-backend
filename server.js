@@ -61,6 +61,25 @@ function runGame() {
         }
     }, 100);
 }
+function runGame() {
+    const gameInterval = setInterval(() => {
+        gameState.multiplier = parseFloat((gameState.multiplier + 0.01).toFixed(2));
+
+        if (gameState.multiplier >= gameState.crashPoint) {
+            clearInterval(gameInterval);
+            gameState.status = 'CRASHED';
+            gameState.history.unshift(gameState.crashPoint);
+            if (gameState.history.length > 10) gameState.history.pop();
+
+            io.emit('game_crash', { crashPoint: gameState.crashPoint });
+            console.log("CRASHED AT: " + gameState.crashPoint + "x");
+            setTimeout(startGameLoop, 3000);
+        } else {
+            io.emit('multiplier_update', { multiplier: gameState.multiplier });
+            console.log("Multiplier: " + gameState.multiplier + "x");
+        }
+    }, 100);
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
