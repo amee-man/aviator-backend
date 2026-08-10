@@ -9,10 +9,10 @@ const io = socketIo(server);
 
 app.use(express.json());
 
-// Static files (index.html, admin.html, JS, CSS) serve gochuuf
+// Static files serve gochuuf
 app.use(express.static(path.join(__dirname)));
 
-// Root Route (/) irratti index.html akka banamu gochuuf
+// Root route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -64,6 +64,6 @@ function runGame() {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(Server - iin port ${ PORT } irratti hojjechaa jira...);
+    console.log(Server is running on port ${ PORT });
     startGameLoop();
 });

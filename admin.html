@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="om">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Aviator Admin Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: #fff;
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #333;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #222;
+        }
+
+        .card {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            width: 200px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Admin Panel - Aviator Engine</h1>
+    <div class="card">
+        <h3>Total System Balance</h3>
+        <p id="totalBalance">$0.00</p>
+    </div>
+
+    <h2>Taphattoota Hunda (Users)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Balance</th>
+                <th>Role</th>
+            </tr>
+        </thead>
+        <tbody id="userTable"></tbody>
+    </table>
+
+    <script>
+        async function loadAdminData() {
+            const resStats = await fetch('/api/admin/stats');
+            const dataStats = await resStats.json();
+            document.getElementById('totalBalance').innerText = $${ dataStats.totalUserBalance.toFixed(2) };
+
+            const resUsers = await fetch('/api/admin/users');
+            const dataUsers = await resUsers.json();
+            const tbody = document.getElementById('userTable');
+            tbody.innerHTML = '';
+            dataUsers.users.forEach(u => {
+                tbody.innerHTML += <tr><td>${u.id}</td><td>${u.username}</td><td>$${u.balance.toFixed(2)}</td><td>${u.role}</td></tr>;
+            });
+        }
+        loadAdminData();
+    </script>
+</body>
+
+</html>
