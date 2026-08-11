@@ -20,12 +20,7 @@ const db = new sqlite3.Database('./database.db', (err) => {
     else console.log('Connected to SQLite Database.');
 });
 
-db.run(CREATE TABLE IF NOT EXISTS users(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT,
-    balance REAL DEFAULT 0
-));
+db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, balance REAL DEFAULT 0)");
 
 // Register Route
 app.post('/api/register', async (req, res) => {
@@ -54,7 +49,7 @@ app.post('/api/login', (req, res) => {
 
 // Deposit / Withdraw Simulator (Telebirr & CBE)
 app.post('/api/transaction', (req, res) => {
-    const { username, amount, type, method } = req.body; // type: 'deposit' or 'withdraw', method: 'Telebirr' or 'CBE'
+    const { username, amount, type, method } = req.body;
 
     db.get(SELECT * FROM users WHERE username = ?, [username], (err, user) => {
         if (err || !user) return res.status(400).json({ error: 'Fayyisaan hin argamne' });
@@ -76,7 +71,7 @@ app.post('/api/transaction', (req, res) => {
 
 // Aviator Game Loop (WebSocket)
 let currentMultiplier = 1.00;
-let gameState = 'WAITING'; // WAITING, RUNNING, CRASHED
+let gameState = 'WAITING';
 
 function startAviatorGame() {
     gameState = 'WAITING';
@@ -85,7 +80,7 @@ function startAviatorGame() {
 
     setTimeout(() => {
         gameState = 'RUNNING';
-        let crashPoint = (Math.random() * 5 + 1).toFixed(2); // Random crash between 1x and 6x
+        let crashPoint = (Math.random() * 5 + 1).toFixed(2);
 
         let interval = setInterval(() => {
             currentMultiplier += 0.05;
@@ -93,7 +88,7 @@ function startAviatorGame() {
                 clearInterval(interval);
                 gameState = 'CRASHED';
                 io.emit('game_state', { state: gameState, multiplier: parseFloat(crashPoint) });
-                setTimeout(startAviatorGame, 4000); // 4 seconds break before next round
+                setTimeout(startAviatorGame, 4000);
             } else {
                 io.emit('game_state', { state: gameState, multiplier: parseFloat(currentMultiplier.toFixed(2)) });
             }
@@ -102,5 +97,6 @@ function startAviatorGame() {
 }
 
 startAviatorGame();
+
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(Server is running on port ${ PORT }));
