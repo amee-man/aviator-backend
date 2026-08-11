@@ -1,82 +1,106 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const { Server } = require('socket.io');
+const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
+const cors = require('cors');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-
-const io = socketIo(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.json());
+app.use(cors());
 app.use(express.static(path.join(__dirname)));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Database Setup
+const db = new sqlite3.Database('./database.db', (err) => {
+    if (err) console.error('DB Error:', err.message);
+    else console.log('Connected to SQLite Database.');
 });
 
-let gameState = {
-    status: 'WAITING',
-    multiplier: 1.00,
-    crashPoint: 1.00,
-    history: []
-};
+db.run(CREATE TABLE IF NOT EXISTS users(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT,
+    balance REAL DEFAULT 0
+));
 
-function generateCrashPoint() {
-    const e = 100;
-    const h = Math.random() * 100;
-    if (h < 3) return 1.00;
-    return Math.max(1.00, parseFloat((e / (100 - h)).toFixed(2)));
-}
+// Register Route
+app.post('/api/register', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Guutuu guutuutti guuti' });
 
-function startGameLoop() {
-    gameState.status = 'WAITING';
-    gameState.multiplier = 1.00;
-    gameState.crashPoint = generateCrashPoint();
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.run(INSERT INTO users(username, password, balance) VALUES(?, ?, 100), [username, hashedPassword], function (err) {
+        if (err) return res.status(400).json({ error: 'Maqaa fayyadamaa kana dura jiruun galmeeffameera' });
+        res.json({ success: true, message: 'Galmeen milkaa\'eera' });
+    });
+});
 
-    io.emit('game_state', gameState);
+// Login Route
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    db.get(SELECT * FROM users WHERE username = ?, [username], async (err, user) => {
+        if (err || !user) return res.status(400).json({ error: 'Maqaa ykn jecha iccitiistii sirrii miti' });
 
-    console.log("---------------------------------");
-    console.log("Round Haaraa: Crash Point: " + gameState.crashPoint + "x");
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) return res.status(400).json({ error: 'Jechi icciitii sirrii miti' });
+
+        res.json({ success: true, username: user.username, balance: user.balance });
+    });
+});
+
+// Deposit / Withdraw Simulator (Telebirr & CBE)
+app.post('/api/transaction', (req, res) => {
+    const { username, amount, type, method } = req.body; // type: 'deposit' or 'withdraw', method: 'Telebirr' or 'CBE'
+
+    db.get(SELECT * FROM users WHERE username = ?, [username], (err, user) => {
+        if (err || !user) return res.status(400).json({ error: 'Fayyisaan hin argamne' });
+
+        let newBalance = user.balance;
+        if (type === 'deposit') {
+            newBalance += parseFloat(amount);
+        } else if (type === 'withdraw') {
+            if (user.balance < amount) return res.status(400).json({ error: 'Herrega kee irra maallaqni ga’u hin jiru' });
+            newBalance -= parseFloat(amount);
+        }
+
+        db.run(UPDATE users SET balance = ? WHERE username = ?, [newBalance, username], (err) => {
+            if (err) return res.status(500).json({ error: 'Rakkoo server mudate' });
+            res.json({ success: true, balance: newBalance, message: ${ method } irraa ${ type } milkaa'eera! });
+        });
+    });
+});
+
+// Aviator Game Loop (WebSocket)
+let currentMultiplier = 1.00;
+let gameState = 'WAITING'; // WAITING, RUNNING, CRASHED
+
+function startAviatorGame() {
+    gameState = 'WAITING';
+    currentMultiplier = 1.00;
+    io.emit('game_state', { state: gameState, multiplier: currentMultiplier });
 
     setTimeout(() => {
-        gameState.status = 'RUNNING';
-        runGame();
-    }, 5000);
+        gameState = 'RUNNING';
+        let crashPoint = (Math.random() * 5 + 1).toFixed(2); // Random crash between 1x and 6x
+
+        let interval = setInterval(() => {
+            currentMultiplier += 0.05;
+            if (currentMultiplier >= crashPoint) {
+                clearInterval(interval);
+                gameState = 'CRASHED';
+                io.emit('game_state', { state: gameState, multiplier: parseFloat(crashPoint) });
+                setTimeout(startAviatorGame, 4000); // 4 seconds break before next round
+            } else {
+                io.emit('game_state', { state: gameState, multiplier: parseFloat(currentMultiplier.toFixed(2)) });
+            }
+        }, 100);
+    }, 3000);
 }
 
-function runGame() {
-    const gameInterval = setInterval(() => {
-        gameState.multiplier = parseFloat((gameState.multiplier + 0.01).toFixed(2));
-
-        // Multiplier Socket irratti erguu (Browser keessatti ni socho'a)
-        io.emit('multiplier_update', { multiplier: gameState.multiplier });
-
-        if (gameState.multiplier >= gameState.crashPoint) {
-            clearInterval(gameInterval);
-            gameState.status = 'CRASHED';
-            gameState.history.unshift(gameState.crashPoint);
-            if (gameState.history.length > 10) gameState.history.pop();
-
-            io.emit('game_crash', { crashPoint: gameState.crashPoint });
-            console.log("CRASHED AT: " + gameState.crashPoint + "x");
-
-            setTimeout(startGameLoop, 3000);
-        }
-    }, 100);
-}
-
-io.on('connection', (socket) => {
-    socket.emit('game_state', gameState);
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log("Server is running on port " + PORT);
-    startGameLoop();
-});
+startAviatorGame();
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, () => console.log(Server is running on port ${ PORT }));
