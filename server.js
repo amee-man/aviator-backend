@@ -28,7 +28,7 @@ app.post('/api/register', async (req, res) => {
     if (!username || !password) return res.status(400).json({ error: 'Guutuu guutuutti guuti' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    db.run(INSERT INTO users(username, password, balance) VALUES(?, ?, 100), [username, hashedPassword], function (err) {
+    db.run("INSERT INTO users (username, password, balance) VALUES (?, ?, 100)", [username, hashedPassword], function (err) {
         if (err) return res.status(400).json({ error: 'Maqaa fayyadamaa kana dura jiruun galmeeffameera' });
         res.json({ success: true, message: 'Galmeen milkaa\'eera' });
     });
