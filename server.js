@@ -37,7 +37,7 @@ app.post('/api/register', async (req, res) => {
 // Login Route
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    db.get(SELECT * FROM users WHERE username = ?, [username], async (err, user) => {
+    db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
         if (err || !user) return res.status(400).json({ error: 'Maqaa ykn jecha iccitiistii sirrii miti' });
 
         const valid = await bcrypt.compare(password, user.password);
@@ -51,7 +51,7 @@ app.post('/api/login', (req, res) => {
 app.post('/api/transaction', (req, res) => {
     const { username, amount, type, method } = req.body;
 
-    db.get(SELECT * FROM users WHERE username = ?, [username], (err, user) => {
+    db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
         if (err || !user) return res.status(400).json({ error: 'Fayyisaan hin argamne' });
 
         let newBalance = user.balance;
@@ -62,7 +62,7 @@ app.post('/api/transaction', (req, res) => {
             newBalance -= parseFloat(amount);
         }
 
-        db.run(UPDATE users SET balance = ? WHERE username = ?, [newBalance, username], (err) => {
+        db.run("UPDATE users SET balance = ? WHERE username = ?", [newBalance, username], (err) => {
             if (err) return res.status(500).json({ error: 'Rakkoo server mudate' });
             res.json({ success: true, balance: newBalance, message: ${ method } irraa ${ type } milkaa'eera! });
         });
